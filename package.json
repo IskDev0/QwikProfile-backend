@@ -1,0 +1,23 @@
+{
+  "name": "devlinks-backend",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "migrate": "npx drizzle-kit push",
+    "studio": "bunx drizzle-kit studio"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.922.0",
+    "@hono/zod-validator": "^0.7.4",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
+    "hono": "^4.10.4",
+    "pg": "^8.16.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.15.6",
+    "drizzle-kit": "^0.31.6",
+    "tsx": "^4.20.6"
+  }
+}
