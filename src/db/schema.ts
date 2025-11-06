@@ -39,7 +39,7 @@ export const profiles = pgTable(
     slug: text("slug").notNull().unique(),
     title: text("title"),
     bio: text("bio"),
-    avatarUrl: text("avatar_url"),
+    avatarUrl: text("avatar_url").default(""),
     theme: text("theme").default("default"),
     isPublished: boolean("is_published").default(false),
     createdAt: timestamp("created_at").defaultNow(),

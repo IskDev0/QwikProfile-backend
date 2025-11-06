@@ -202,10 +202,6 @@ authIndex.get("/me", authMiddleware, async (c: Context) => {
   try {
     const payload = await getUserInfo(c);
 
-    if (payload instanceof Response) {
-      return payload;
-    }
-
     const [user] = await db
       .select()
       .from(users)

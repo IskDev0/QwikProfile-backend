@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import { verify } from "hono/jwt";
+import { HTTPException } from "hono/http-exception";
 
 export interface UserPayload {
   id: string;
@@ -8,27 +9,21 @@ export interface UserPayload {
 
 export default async function getUserInfo(
   c: Context,
-): Promise<UserPayload | Response> {
+): Promise<UserPayload> {
   const authHeader = c.req.header("Authorization");
 
   if (!authHeader) {
-    return c.json(
-      {
-        error: "Authorization header missing",
-      },
-      401,
-    );
+    throw new HTTPException(401, {
+      message: "Authorization header missing",
+    });
   }
 
   const token = authHeader.split(" ")[1];
 
   if (!token) {
-    return c.json(
-      {
-        error: "Token missing",
-      },
-      401,
-    );
+    throw new HTTPException(401, {
+      message: "Token missing",
+    });
   }
 
   try {
@@ -37,11 +32,8 @@ export default async function getUserInfo(
       process.env.ACCESS_SECRET!,
     )) as unknown as UserPayload;
   } catch (error) {
-    return c.json(
-      {
-        error: "Invalid or expired token",
-      },
-      401,
-    );
+    throw new HTTPException(401, {
+      message: "Invalid or expired token",
+    });
   }
 }
