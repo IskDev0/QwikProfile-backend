@@ -8,8 +8,23 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   email: z.email({ error: "Invalid email" }),
-  username: z.string().min(2),
   password: z.string().min(8),
 });
 
-export { loginSchema, registerSchema };
+const forgotPasswordSchema = z.object({
+  email: z.email({ message: "Invalid email" }),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, { message: "Token is required" }),
+  newPassword: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters" }),
+});
+
+export {
+  loginSchema,
+  registerSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+};
