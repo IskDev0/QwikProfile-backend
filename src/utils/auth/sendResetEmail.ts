@@ -19,7 +19,7 @@ export default async function sendResetEmail(
       process.env.MAILGUN_DOMAIN ||
         "sandbox427754dbfbd247cb89a70f4ff9345826.mailgun.org",
       {
-        from: `DevLinks <postmaster@${process.env.MAILGUN_DOMAIN || "sandbox427754dbfbd247cb89a70f4ff9345826.mailgun.org"}>`,
+        from: `QwikProfile <postmaster@${process.env.MAILGUN_DOMAIN || "sandbox427754dbfbd247cb89a70f4ff9345826.mailgun.org"}>`,
         to: [email],
         subject: "Password Reset Request",
         html: `
