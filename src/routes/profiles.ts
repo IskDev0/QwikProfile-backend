@@ -32,6 +32,40 @@ profilesIndex.get("/", authMiddleware, async (c: Context) => {
   }
 });
 
+profilesIndex.get("/slug/:slug", async (c: Context) => {
+  const slug = c.req.param("slug");
+
+  try {
+    const [existingProfile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.slug, slug));
+
+    if (!existingProfile) {
+      return c.json(
+        {
+          error: "Profile not found",
+        },
+        404,
+      );
+    }
+
+    const blocks = await db
+      .select()
+      .from(profileBlocks)
+      .where(eq(profileBlocks.profileId, existingProfile.id))
+      .orderBy(profileBlocks.position);
+
+    return c.json({
+      ...existingProfile,
+      blocks,
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 profilesIndex.get("/check-slug", async (c: Context) => {
   const slug = c.req.query("slug");
 
@@ -56,7 +90,7 @@ profilesIndex.get("/check-slug", async (c: Context) => {
   }
 });
 
-profilesIndex.get("/:profileId", async (c: Context) => {
+profilesIndex.get("/:profileId", authMiddleware, async (c: Context) => {
   const profileId = c.req.param("profileId");
 
   try {
