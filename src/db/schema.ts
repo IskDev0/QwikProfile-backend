@@ -1,6 +1,6 @@
 import {
-  bigserial,
   boolean,
+  char,
   index,
   integer,
   jsonb,
@@ -79,20 +79,45 @@ export const profileBlocks = pgTable(
   ],
 );
 
-export const profileViews = pgTable(
-  "profile_views",
+export const analyticsEvents = pgTable(
+  "analytics_events",
   {
-    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     profileId: uuid("profile_id")
       .notNull()
-      .references(() => profiles.id),
-    viewedAt: timestamp("viewed_at").defaultNow(),
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    blockId: uuid("block_id").references(() => profileBlocks.id, {
+      onDelete: "cascade",
+    }),
+    eventType: text("event_type", { enum: ["view", "click"] }).notNull(),
+
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    utmContent: text("utm_content"),
+    utmTerm: text("utm_term"),
+
+    referrer: text("referrer"),
+    trafficSource: text("traffic_source"), // 'instagram', 'tiktok', 'twitter', 'direct', 'etc'
+
+    userAgent: text("user_agent"),
+    userAgentParsed: jsonb("user_agent_parsed").$type<UserAgentParsed>(),
+    deviceType: text("device_type", { enum: ["mobile", "desktop", "tablet"] }),
+    ipHash: char("ip_hash", { length: 64 }).notNull(),
+
+    country: text("country"),
+    city: text("city"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    {
-      profileIdIdx: index("profile_views_profile_id_idx").on(table.profileId),
-      viewedAtIdx: index("profile_views_viewed_at_idx").on(table.viewedAt),
-    },
+    index("analytics_events_profile_created_idx").on(
+      table.profileId,
+      table.createdAt,
+    ),
+    index("analytics_events_block_idx").on(table.blockId),
+    index("analytics_events_event_type_idx").on(table.eventType),
+    index("analytics_events_utm_campaign_idx").on(table.utmCampaign),
   ],
 );
 
@@ -106,22 +131,33 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
     references: [users.id],
   }),
   blocks: many(profileBlocks),
-  views: many(profileViews),
+  analyticsEvents: many(analyticsEvents),
 }));
 
-export const profileBlocksRelations = relations(profileBlocks, ({ one }) => ({
-  profile: one(profiles, {
-    fields: [profileBlocks.profileId],
-    references: [profiles.id],
+export const profileBlocksRelations = relations(
+  profileBlocks,
+  ({ one, many }) => ({
+    profile: one(profiles, {
+      fields: [profileBlocks.profileId],
+      references: [profiles.id],
+    }),
+    analyticsEvents: many(analyticsEvents),
   }),
-}));
+);
 
-export const profileViewsRelations = relations(profileViews, ({ one }) => ({
-  profile: one(profiles, {
-    fields: [profileViews.profileId],
-    references: [profiles.id],
+export const analyticsEventsRelations = relations(
+  analyticsEvents,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [analyticsEvents.profileId],
+      references: [profiles.id],
+    }),
+    block: one(profileBlocks, {
+      fields: [analyticsEvents.blockId],
+      references: [profileBlocks.id],
+    }),
   }),
-}));
+);
 
 export type BlockConfig = LinkBlockConfig | TextBlockConfig | HeaderBlockConfig;
 
@@ -144,6 +180,14 @@ export interface HeaderBlockConfig {
   alignment?: "left" | "center" | "right";
 }
 
+export interface UserAgentParsed {
+  browser?: string;
+  browserVersion?: string;
+  os?: string;
+  osVersion?: string;
+  device?: string;
+}
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -153,5 +197,5 @@ export type NewProfile = typeof profiles.$inferInsert;
 export type ProfileBlock = typeof profileBlocks.$inferSelect;
 export type NewProfileBlock = typeof profileBlocks.$inferInsert;
 
-export type ProfileView = typeof profileViews.$inferSelect;
-export type NewProfileView = typeof profileViews.$inferInsert;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;
