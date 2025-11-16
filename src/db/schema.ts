@@ -121,8 +121,83 @@ export const analyticsEvents = pgTable(
   ],
 );
 
+export const utmTemplates = pgTable(
+  "utm_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    platform: text("platform").notNull(),
+    icon: text("icon"),
+    defaultParams: jsonb("default_params").notNull().$type<UtmParams>(),
+    isSystem: boolean("is_system").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    {
+      platformIdx: index("utm_templates_platform_idx").on(table.platform),
+      isSystemIdx: index("utm_templates_is_system_idx").on(table.isSystem),
+    },
+  ],
+);
+
+export const userUtmTemplates = pgTable(
+  "user_utm_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    icon: text("icon"),
+    params: jsonb("params").notNull().$type<UtmParams>(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    {
+      userIdIdx: index("user_utm_templates_user_id_idx").on(table.userId),
+    },
+  ],
+);
+
+export const utmLinks = pgTable(
+  "utm_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    utmParams: jsonb("utm_params").notNull().$type<UtmParams>(),
+    templateId: uuid("template_id"),
+    templateType: text("template_type", { enum: ["system", "user"] }),
+    shortCode: text("short_code").unique(),
+    fullUrl: text("full_url").notNull(),
+    clicks: integer("clicks").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("utm_links_user_id_idx").on(table.userId),
+    index("utm_links_profile_id_idx").on(table.profileId),
+    index("utm_links_short_code_idx").on(table.shortCode),
+    uniqueIndex("utm_links_short_code_unique_idx").on(table.shortCode),
+  ],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   profiles: many(profiles),
+  userUtmTemplates: many(userUtmTemplates),
+  utmLinks: many(utmLinks),
 }));
 
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
@@ -132,6 +207,7 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   }),
   blocks: many(profileBlocks),
   analyticsEvents: many(analyticsEvents),
+  utmLinks: many(utmLinks),
 }));
 
 export const profileBlocksRelations = relations(
@@ -158,6 +234,27 @@ export const analyticsEventsRelations = relations(
     }),
   }),
 );
+
+export const userUtmTemplatesRelations = relations(
+  userUtmTemplates,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userUtmTemplates.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const utmLinksRelations = relations(utmLinks, ({ one }) => ({
+  user: one(users, {
+    fields: [utmLinks.userId],
+    references: [users.id],
+  }),
+  profile: one(profiles, {
+    fields: [utmLinks.profileId],
+    references: [profiles.id],
+  }),
+}));
 
 export type BlockConfig = LinkBlockConfig | TextBlockConfig | HeaderBlockConfig;
 
@@ -188,6 +285,14 @@ export interface UserAgentParsed {
   device?: string;
 }
 
+export interface UtmParams {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+}
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -199,3 +304,12 @@ export type NewProfileBlock = typeof profileBlocks.$inferInsert;
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type NewAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
+export type UtmTemplate = typeof utmTemplates.$inferSelect;
+export type NewUtmTemplate = typeof utmTemplates.$inferInsert;
+
+export type UserUtmTemplate = typeof userUtmTemplates.$inferSelect;
+export type NewUserUtmTemplate = typeof userUtmTemplates.$inferInsert;
+
+export type UtmLink = typeof utmLinks.$inferSelect;
+export type NewUtmLink = typeof utmLinks.$inferInsert;

@@ -71,7 +71,14 @@ export function getDeviceType(
   return "desktop";
 }
 
-export function getTrafficSource(referrer: string | null): string | null {
+export function getTrafficSource(
+  referrer: string | null,
+  utmSource?: string,
+): string | null {
+  if (utmSource) {
+    return utmSource.toLowerCase();
+  }
+
   if (!referrer) {
     return "direct";
   }

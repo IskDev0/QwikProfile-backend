@@ -321,9 +321,9 @@ analyticsIndex.post("/events/view", async (c: Context) => {
     const clientIp = getClientIp(headers);
 
     const deviceType = getDeviceType(userAgent);
-    const trafficSource = getTrafficSource(referrer);
-    const ipHash = hashIpAddress(clientIp);
     const utmParams = url ? extractUtmParams(url) : {};
+    const trafficSource = getTrafficSource(referrer, utmParams.utmSource);
+    const ipHash = hashIpAddress(clientIp);
     const geolocation = getGeolocation(clientIp);
     const userAgentParsed = parseUserAgent(userAgent);
 
@@ -399,9 +399,9 @@ analyticsIndex.post("/events/click", async (c: Context) => {
     const clientIp = getClientIp(headers);
 
     const deviceType = getDeviceType(userAgent);
-    const trafficSource = getTrafficSource(referrer);
-    const ipHash = hashIpAddress(clientIp);
     const utmParams = url ? extractUtmParams(url) : {};
+    const trafficSource = getTrafficSource(referrer, utmParams.utmSource);
+    const ipHash = hashIpAddress(clientIp);
     const geolocation = getGeolocation(clientIp);
     const userAgentParsed = parseUserAgent(userAgent);
 
