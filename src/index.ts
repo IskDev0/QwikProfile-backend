@@ -5,6 +5,7 @@ import authIndex from "./routes/auth";
 import profilesIndex from "./routes/profiles";
 import analyticsIndex from "./routes/analytics";
 import utmIndex from "./routes/utm";
+import themesIndex from "./routes/themes";
 import db from "./db";
 import { utmLinks } from "./db/schema";
 import { eq } from "drizzle-orm";
@@ -26,6 +27,7 @@ app.route("/auth", authIndex);
 app.route("/profiles", profilesIndex);
 app.route("/analytics", analyticsIndex);
 app.route("/utm", utmIndex);
+app.route("/themes", themesIndex);
 
 app.get("/u/:shortCode", async (c) => {
   const shortCode = c.req.param("shortCode");

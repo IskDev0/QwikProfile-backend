@@ -81,9 +81,9 @@ authIndex.post("/login", validationHook(loginSchema), async (c: Context) => {
     if (!user) {
       return c.json(
         {
-          error: "Invalid email or password",
+          error: "User not found",
         },
-        400,
+        404,
       );
     }
 

@@ -1,6 +1,6 @@
 import { Context, Hono } from "hono";
 import db from "../db";
-import { profileBlocks, profiles } from "../db/schema";
+import { profileBlocks, profiles, themes } from "../db/schema";
 import { and, eq, max } from "drizzle-orm";
 import authMiddleware from "../middleware/authMiddleware";
 import { validationHook } from "../validation/validationHook";
@@ -13,6 +13,7 @@ import getUserInfo from "../utils/auth/getUserInfo";
 import { BLOCK_TYPES_CONFIG } from "../constants/blockTypesConfig";
 import { uploadToR2 } from "../utils/s3/uploadToS3";
 import { deleteFromR2 } from "../utils/s3/deleteFromS3";
+import { DEFAULT_THEME_CONFIG } from "../constants/defaultTheme";
 
 const profilesIndex = new Hono();
 
@@ -20,11 +21,14 @@ profilesIndex.get("/", authMiddleware, async (c: Context) => {
   const user = await getUserInfo(c);
 
   try {
-    const profilesList = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.userId, user.id))
-      .orderBy(profiles.createdAt);
+    const profilesList = await db.query.profiles.findMany({
+      where: eq(profiles.userId, user.id),
+      with: {
+        themeRelation: true,
+      },
+      orderBy: (profiles, { asc }) => [asc(profiles.createdAt)],
+    });
+
     return c.json({ items: profilesList });
   } catch (error) {
     console.error(error);
@@ -36,12 +40,17 @@ profilesIndex.get("/slug/:slug", async (c: Context) => {
   const slug = c.req.param("slug");
 
   try {
-    const [existingProfile] = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.slug, slug));
+    const profileData = await db.query.profiles.findFirst({
+      where: eq(profiles.slug, slug),
+      with: {
+        blocks: {
+          orderBy: (blocks, { asc }) => [asc(blocks.position)],
+        },
+        themeRelation: true,
+      },
+    });
 
-    if (!existingProfile) {
+    if (!profileData) {
       return c.json(
         {
           error: "Profile not found",
@@ -50,15 +59,12 @@ profilesIndex.get("/slug/:slug", async (c: Context) => {
       );
     }
 
-    const blocks = await db
-      .select()
-      .from(profileBlocks)
-      .where(eq(profileBlocks.profileId, existingProfile.id))
-      .orderBy(profileBlocks.position);
+    const { themeRelation, blocks, ...profile } = profileData;
 
     return c.json({
-      ...existingProfile,
+      ...profile,
       blocks,
+      themeConfig: themeRelation?.config || DEFAULT_THEME_CONFIG,
     });
   } catch (error) {
     console.error(error);
@@ -94,10 +100,15 @@ profilesIndex.get("/:profileId", authMiddleware, async (c: Context) => {
   const profileId = c.req.param("profileId");
 
   try {
-    const [profile] = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.id, profileId));
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, profileId),
+      with: {
+        blocks: {
+          orderBy: (blocks, { asc }) => [asc(blocks.position)],
+        },
+        themeRelation: true,
+      },
+    });
 
     if (!profile) {
       return c.json({ error: "Profile not found" }, 404);

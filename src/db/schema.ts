@@ -41,6 +41,9 @@ export const profiles = pgTable(
     bio: text("bio"),
     avatarUrl: text("avatar_url").default(""),
     theme: text("theme").default("default"),
+    themeId: uuid("theme_id").references(() => themes.id, {
+      onDelete: "set null",
+    }),
     isPublished: boolean("is_published").default(false),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at")
@@ -52,6 +55,7 @@ export const profiles = pgTable(
       slugIdx: uniqueIndex("profiles_slug_idx").on(table.slug),
       userIdIdx: index("profiles_user_id_idx").on(table.userId),
       isPublishedIdx: index("profiles_is_published_idx").on(table.isPublished),
+      themeIdIdx: index("profiles_theme_id_idx").on(table.themeId),
     },
   ],
 );
@@ -194,6 +198,29 @@ export const utmLinks = pgTable(
   ],
 );
 
+export const themes = pgTable(
+  "themes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    description: text("description"),
+    previewImageUrl: text("preview_image_url"),
+    config: jsonb("config").notNull().$type<ThemeConfig>(),
+    isSystem: boolean("is_system").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    {
+      nameIdx: uniqueIndex("themes_name_idx").on(table.name),
+      isSystemIdx: index("themes_is_system_idx").on(table.isSystem),
+    },
+  ],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   profiles: many(profiles),
   userUtmTemplates: many(userUtmTemplates),
@@ -204,6 +231,10 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   user: one(users, {
     fields: [profiles.userId],
     references: [users.id],
+  }),
+  themeRelation: one(themes, {
+    fields: [profiles.themeId],
+    references: [themes.id],
   }),
   blocks: many(profileBlocks),
   analyticsEvents: many(analyticsEvents),
@@ -293,6 +324,79 @@ export interface UtmParams {
   utm_term?: string;
 }
 
+export interface ThemeBackgroundSolid {
+  type: "solid";
+  value: string;
+}
+
+export interface ThemeBackgroundGradient {
+  type: "gradient";
+  gradient: {
+    from: string;
+    to: string;
+    direction: string;
+  };
+}
+
+export interface ThemeBackgroundImage {
+  type: "image";
+  imageUrl: string;
+}
+
+export type ThemeBackground =
+  | ThemeBackgroundSolid
+  | ThemeBackgroundGradient
+  | ThemeBackgroundImage;
+
+export interface BlockStyle {
+  backgroundColor?: string;
+  textColor?: string;
+  borderRadius?: string;
+  borderWidth?: string;
+  borderColor?: string;
+  fontWeight?: string;
+  padding?: string;
+  hoverEffect?: "scale" | "shadow" | "glow" | "none";
+}
+
+export interface LinkStyleOverrides {
+  default?: Partial<BlockStyle>;
+  outline?: Partial<BlockStyle>;
+  shadow?: Partial<BlockStyle>;
+}
+
+export interface ThemeConfig {
+  profile: {
+    background: ThemeBackground;
+    textColor: string;
+    accentColor: string;
+    fontFamily: string;
+  };
+  avatar: {
+    borderWidth: string;
+    borderColor: string;
+    shape: "circle" | "rounded" | "square";
+    shadow: "none" | "sm" | "md" | "lg" | "xl";
+  };
+  defaultBlockStyles: {
+    borderRadius: string;
+    padding: string;
+    backgroundColor: string;
+    textColor: string;
+  };
+  blockOverrides?: {
+    link?: LinkStyleOverrides;
+    header?: Partial<BlockStyle>;
+    text?: Partial<BlockStyle>;
+    [blockType: string]: Partial<BlockStyle> | LinkStyleOverrides | undefined;
+  };
+  spacing: {
+    blockGap: string;
+    containerPadding: string;
+    maxWidth: string;
+  };
+}
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -313,3 +417,6 @@ export type NewUserUtmTemplate = typeof userUtmTemplates.$inferInsert;
 
 export type UtmLink = typeof utmLinks.$inferSelect;
 export type NewUtmLink = typeof utmLinks.$inferInsert;
+
+export type Theme = typeof themes.$inferSelect;
+export type NewTheme = typeof themes.$inferInsert;
