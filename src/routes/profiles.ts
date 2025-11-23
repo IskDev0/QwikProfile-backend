@@ -14,6 +14,7 @@ import { BLOCK_TYPES_CONFIG } from "../constants/blockTypesConfig";
 import { uploadToR2 } from "../utils/s3/uploadToS3";
 import { deleteFromR2 } from "../utils/s3/deleteFromS3";
 import { DEFAULT_THEME_CONFIG } from "../constants/defaultTheme";
+import { CacheService, CacheKeys, CacheTTL } from "../utils/cache";
 
 const profilesIndex = new Hono();
 
@@ -40,6 +41,14 @@ profilesIndex.get("/slug/:slug", async (c: Context) => {
   const slug = c.req.param("slug");
 
   try {
+    const cacheKey = CacheKeys.profile(slug);
+
+    const cachedProfile = await CacheService.get<any>(cacheKey);
+
+    if (cachedProfile) {
+      return c.json(cachedProfile);
+    }
+
     const profileData = await db.query.profiles.findFirst({
       where: eq(profiles.slug, slug),
       with: {
@@ -61,11 +70,15 @@ profilesIndex.get("/slug/:slug", async (c: Context) => {
 
     const { themeRelation, blocks, ...profile } = profileData;
 
-    return c.json({
+    const response = {
       ...profile,
       blocks,
       themeConfig: themeRelation?.config || DEFAULT_THEME_CONFIG,
-    });
+    };
+
+    await CacheService.set(cacheKey, response, CacheTTL.PROFILE);
+
+    return c.json(response);
   } catch (error) {
     console.error(error);
     return c.json({ error: "Internal server error" }, 500);
@@ -258,6 +271,12 @@ profilesIndex.put("/:profileId", authMiddleware, async (c: Context) => {
       })
       .where(eq(profiles.id, profileId));
 
+    await CacheService.delete(CacheKeys.profile(existingProfile.slug));
+    if (existingProfile.slug !== slug) {
+      await CacheService.delete(CacheKeys.profile(slug));
+    }
+    await CacheService.delete(CacheKeys.userProfiles(user.id));
+
     return c.json({ message: "Profile updated successfully" });
   } catch (error) {
     console.error(error);
@@ -289,6 +308,9 @@ profilesIndex.patch("/:profileId", authMiddleware, async (c: Context) => {
         isPublished: !existingProfile.isPublished,
       })
       .where(eq(profiles.id, profileId));
+
+    await CacheService.delete(CacheKeys.profile(existingProfile.slug));
+    await CacheService.delete(CacheKeys.userProfiles(user.id));
 
     return c.json({
       message: "Profile status changed successfully",
@@ -327,6 +349,9 @@ profilesIndex.delete("/:profileId", authMiddleware, async (c: Context) => {
     }
 
     await db.delete(profiles).where(eq(profiles.id, profileId));
+
+    await CacheService.delete(CacheKeys.profile(existingProfile.slug));
+    await CacheService.delete(CacheKeys.userProfiles(user.id));
 
     return c.json({ message: "Profile deleted successfully" });
   } catch (error) {
@@ -378,6 +403,8 @@ profilesIndex.post(
           position: newPosition,
         })
         .returning();
+
+      await CacheService.delete(CacheKeys.profile(profile.slug));
 
       return c.json(
         {
@@ -440,6 +467,8 @@ profilesIndex.put(
         .where(eq(profileBlocks.id, blockId))
         .returning();
 
+      await CacheService.delete(CacheKeys.profile(profile.slug));
+
       return c.json({
         message: "Block updated successfully",
         block: updatedBlock,
@@ -479,6 +508,8 @@ profilesIndex.delete("/blocks/:blockId", authMiddleware, async (c: Context) => {
     }
 
     await db.delete(profileBlocks).where(eq(profileBlocks.id, blockId));
+
+    await CacheService.delete(CacheKeys.profile(profile.slug));
 
     return c.json({ message: "Block deleted successfully" });
   } catch (error) {
@@ -536,6 +567,8 @@ profilesIndex.patch(
             .where(eq(profileBlocks.id, block.id));
         }
       });
+
+      await CacheService.delete(CacheKeys.profile(profile.slug));
 
       return c.json({ message: "Blocks reordered successfully" });
     } catch (error) {

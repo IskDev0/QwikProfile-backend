@@ -6,16 +6,27 @@ import authMiddleware from "../middleware/authMiddleware";
 import getUserInfo from "../utils/auth/getUserInfo";
 import { validationHook } from "../validation/validationHook";
 import { applyThemeSchema } from "../validation/themes/themeValidationSchemas";
+import { CacheService, CacheKeys, CacheTTL } from "../utils/cache";
 
 const themesIndex = new Hono();
 
 themesIndex.get("/", async (c: Context) => {
   try {
+    const cacheKey = CacheKeys.systemThemes();
+
+    const cachedThemes = await CacheService.get<any[]>(cacheKey);
+
+    if (cachedThemes) {
+      return c.json({ themes: cachedThemes });
+    }
+
     const themesList = await db
       .select()
       .from(themes)
       .where(eq(themes.isSystem, true))
       .orderBy(themes.name);
+
+    await CacheService.set(cacheKey, themesList, CacheTTL.SYSTEM_THEMES);
 
     return c.json({ themes: themesList });
   } catch (error) {

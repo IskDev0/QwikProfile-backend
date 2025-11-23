@@ -9,6 +9,7 @@ import themesIndex from "./routes/themes";
 import db from "./db";
 import { utmLinks } from "./db/schema";
 import { eq } from "drizzle-orm";
+import { CacheService, CacheKeys, CacheTTL } from "./utils/cache";
 
 const app = new Hono();
 app.use(logger());
@@ -33,6 +34,29 @@ app.get("/u/:shortCode", async (c) => {
   const shortCode = c.req.param("shortCode");
 
   try {
+    const cacheKey = CacheKeys.shortLink(shortCode);
+
+    const cachedLink = await CacheService.get<{
+      fullUrl: string;
+      id: number;
+      clicks: number;
+    }>(cacheKey);
+
+    if (cachedLink) {
+      db.update(utmLinks)
+        .set({ clicks: cachedLink.clicks + 1 })
+        .where(eq(utmLinks.id, cachedLink.id))
+        .then(() => {
+          CacheService.set(
+            cacheKey,
+            { ...cachedLink, clicks: cachedLink.clicks + 1 },
+            CacheTTL.SHORT_LINK,
+          );
+        })
+        .catch((err) => console.error("Error updating clicks:", err));
+
+      return c.redirect(cachedLink.fullUrl, 302);
+    }
     const [link] = await db
       .select()
       .from(utmLinks)
@@ -42,12 +66,17 @@ app.get("/u/:shortCode", async (c) => {
       return c.json({ error: "Short link not found" }, 404);
     }
 
-    await db
-      .update(utmLinks)
-      .set({ clicks: link.clicks + 1 })
-      .where(eq(utmLinks.id, link.id));
+    await CacheService.set(
+      cacheKey,
+      { fullUrl: link.fullUrl, id: link.id, clicks: link.clicks },
+      CacheTTL.SHORT_LINK,
+    );
 
-    // Redirect to full UTM URL
+    db.update(utmLinks)
+      .set({ clicks: link.clicks + 1 })
+      .where(eq(utmLinks.id, link.id))
+      .catch((err) => console.error("Error updating clicks:", err));
+
     return c.redirect(link.fullUrl, 302);
   } catch (error) {
     console.error("Error redirecting short link:", error);

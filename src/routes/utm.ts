@@ -22,16 +22,27 @@ import {
   validateUtmParams,
   cleanUtmParams,
 } from "../utils/utm/validateUtmParams";
+import { CacheService, CacheKeys, CacheTTL } from "../utils/cache";
 
 const utmIndex = new Hono();
 
 utmIndex.get("/templates", async (c: Context) => {
   try {
+    const cacheKey = CacheKeys.systemTemplates();
+
+    const cachedTemplates = await CacheService.get<any[]>(cacheKey);
+
+    if (cachedTemplates) {
+      return c.json({ items: cachedTemplates });
+    }
+
     const templates = await db
       .select()
       .from(utmTemplates)
       .where(eq(utmTemplates.isSystem, true))
       .orderBy(utmTemplates.name);
+
+    await CacheService.set(cacheKey, templates, CacheTTL.SYSTEM_TEMPLATES);
 
     return c.json({ items: templates });
   } catch (error) {
@@ -402,6 +413,10 @@ utmIndex.put(
         .where(eq(utmLinks.id, linkId))
         .returning();
 
+      if (existingLink.shortCode) {
+        await CacheService.delete(CacheKeys.shortLink(existingLink.shortCode));
+      }
+
       const linkWithShortUrl = {
         ...updatedLink,
         shortUrl: updatedLink.shortCode
@@ -439,6 +454,10 @@ utmIndex.delete("/links/:id", authMiddleware, async (c: Context) => {
     }
 
     await db.delete(utmLinks).where(eq(utmLinks.id, linkId));
+
+    if (link.shortCode) {
+      await CacheService.delete(CacheKeys.shortLink(link.shortCode));
+    }
 
     return c.json({ message: "Link deleted successfully" });
   } catch (error) {
