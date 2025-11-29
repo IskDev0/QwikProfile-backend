@@ -57,11 +57,11 @@ authIndex.post(
         .returning();
 
       const { accessToken, refreshToken } = await generateTokens(user);
-      generateCookie(c, accessToken, refreshToken);
+      const csrfToken = generateCookie(c, accessToken, refreshToken);
 
       const { passwordHash, ...formattedUser } = user;
 
-      return c.json(formattedUser, 201);
+      return c.json({ ...formattedUser, csrfToken }, 201);
     } catch (error) {
       console.error(error);
       return c.json(
@@ -115,11 +115,11 @@ authIndex.post(
       body.rememberMe,
     );
 
-    generateCookie(c, accessToken, refreshToken);
+    const csrfToken = generateCookie(c, accessToken, refreshToken);
 
     const { passwordHash, ...formattedUser } = user;
 
-    return c.json(formattedUser);
+    return c.json({ ...formattedUser, csrfToken });
   } catch (error) {
     console.error(error);
     return c.json(
@@ -175,11 +175,11 @@ authIndex.post("/refresh", async (c: Context) => {
     const { accessToken, refreshToken: newRefreshToken } =
       await generateTokens(user);
 
-    generateCookie(c, accessToken, newRefreshToken);
+    const csrfToken = generateCookie(c, accessToken, newRefreshToken);
 
     const { passwordHash, ...formattedUser } = user;
 
-    return c.json(formattedUser);
+    return c.json({ ...formattedUser, csrfToken });
   } catch (error) {
     console.error(error);
     return c.json(

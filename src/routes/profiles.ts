@@ -15,8 +15,16 @@ import { uploadToR2 } from "../utils/s3/uploadToS3";
 import { deleteFromR2 } from "../utils/s3/deleteFromS3";
 import { DEFAULT_THEME_CONFIG } from "../constants/defaultTheme";
 import { CacheService, CacheKeys, CacheTTL } from "../utils/cache";
+import { csrfProtection, originValidation } from "../middleware/csrfMiddleware";
+import {
+  validateImageFile,
+  validateImageSignature,
+} from "../utils/fileValidation";
 
 const profilesIndex = new Hono();
+
+profilesIndex.use("*", originValidation);
+profilesIndex.use("*", csrfProtection);
 
 profilesIndex.get("/", authMiddleware, async (c: Context) => {
   const user = await getUserInfo(c);
@@ -178,6 +186,16 @@ profilesIndex.post("/", authMiddleware, async (c: Context) => {
     let avatarUrl = "";
 
     if (avatar && avatar.size > 0) {
+      const validation = validateImageFile(avatar);
+      if (!validation.valid) {
+        return c.json({ error: validation.error }, 400);
+      }
+
+      const signatureValidation = await validateImageSignature(avatar);
+      if (!signatureValidation.valid) {
+        return c.json({ error: signatureValidation.error }, 400);
+      }
+
       const uploadResult = await uploadToR2(avatar, "avatars");
       avatarUrl = uploadResult.url;
     }
@@ -253,6 +271,16 @@ profilesIndex.put("/:profileId", authMiddleware, async (c: Context) => {
     let avatarUrl = existingProfile.avatarUrl;
 
     if (avatar && avatar.size > 0) {
+      const validation = validateImageFile(avatar);
+      if (!validation.valid) {
+        return c.json({ error: validation.error }, 400);
+      }
+
+      const signatureValidation = await validateImageSignature(avatar);
+      if (!signatureValidation.valid) {
+        return c.json({ error: signatureValidation.error }, 400);
+      }
+
       if (existingProfile.avatarUrl && existingProfile.avatarUrl !== "") {
         await deleteFromR2(existingProfile.avatarUrl);
       }

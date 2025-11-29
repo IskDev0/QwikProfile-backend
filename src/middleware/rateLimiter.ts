@@ -1,6 +1,4 @@
 import { rateLimiter } from "hono-rate-limiter";
-import { RedisStore } from "@hono-rate-limiter/redis";
-import redisClient from "../config/redis";
 import type { Context } from "hono";
 
 function getClientIp(c: Context): string {
@@ -22,14 +20,11 @@ function getClientIp(c: Context): string {
   return "unknown";
 }
 
-const store = new RedisStore({ client: redisClient });
-
 export const authRateLimiter = rateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
   limit: 5, // 5 requests per 15 minutes
   standardHeaders: "draft-6",
   keyGenerator: (c) => `auth:${getClientIp(c)}`,
-  store,
 });
 
 export const forgotPasswordRateLimiter = rateLimiter({
@@ -37,7 +32,6 @@ export const forgotPasswordRateLimiter = rateLimiter({
   limit: 3, // 3 requests per hour
   standardHeaders: "draft-6",
   keyGenerator: (c) => `forgot-password:${getClientIp(c)}`,
-  store,
 });
 
 export const analyticsRateLimiter = rateLimiter({
@@ -45,7 +39,6 @@ export const analyticsRateLimiter = rateLimiter({
   limit: 100, // 100 requests per minute
   standardHeaders: "draft-6",
   keyGenerator: (c) => `analytics:${getClientIp(c)}`,
-  store,
 });
 
 export const globalRateLimiter = rateLimiter({
@@ -53,5 +46,4 @@ export const globalRateLimiter = rateLimiter({
   limit: 60, // 60 requests per minute
   standardHeaders: "draft-6",
   keyGenerator: (c) => `global:${getClientIp(c)}`,
-  store,
 });

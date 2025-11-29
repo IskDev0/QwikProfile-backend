@@ -1,11 +1,14 @@
 import { Context } from "hono";
 import { setCookie } from "hono/cookie";
+import { randomBytes } from "crypto";
 
 export default function generateCookie(
   c: Context,
   accessToken: string,
   refreshToken: string,
-) {
+): string {
+  const csrfToken = randomBytes(32).toString("hex");
+
   setCookie(c, "accessToken", accessToken, {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
@@ -28,4 +31,17 @@ export default function generateCookie(
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
+  setCookie(c, "csrf-token", csrfToken, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    domain:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_DOMAIN
+        : undefined,
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  });
+
+  return csrfToken;
 }

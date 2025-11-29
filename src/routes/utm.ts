@@ -23,8 +23,12 @@ import {
   cleanUtmParams,
 } from "../utils/utm/validateUtmParams";
 import { CacheService, CacheKeys, CacheTTL } from "../utils/cache";
+import { csrfProtection, originValidation } from "../middleware/csrfMiddleware";
 
 const utmIndex = new Hono();
+
+utmIndex.use("*", originValidation);
+utmIndex.use("*", csrfProtection);
 
 utmIndex.get("/templates", async (c: Context) => {
   try {

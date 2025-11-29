@@ -7,8 +7,12 @@ import getUserInfo from "../utils/auth/getUserInfo";
 import { validationHook } from "../validation/validationHook";
 import { applyThemeSchema } from "../validation/themes/themeValidationSchemas";
 import { CacheService, CacheKeys, CacheTTL } from "../utils/cache";
+import { csrfProtection, originValidation } from "../middleware/csrfMiddleware";
 
 const themesIndex = new Hono();
+
+themesIndex.use("*", originValidation);
+themesIndex.use("*", csrfProtection);
 
 themesIndex.get("/", async (c: Context) => {
   try {
