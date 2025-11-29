@@ -102,7 +102,6 @@ export function getTrafficSource(
   if (ref.includes("yahoo.com")) return "yahoo";
   if (ref.includes("yandex.")) return "yandex";
   if (ref.includes("duckduckgo.com")) return "duckduckgo";
-
   return "other";
 }
 
@@ -132,7 +131,6 @@ export function extractUtmParams(url: string) {
 export function getClientIp(
   headers: Record<string, string | undefined>,
 ): string {
-  // For testing: allow overriding IP with X-Test-IP header
   const testIp = headers["x-test-ip"];
   if (testIp && process.env.NODE_ENV !== "production") {
     return testIp;

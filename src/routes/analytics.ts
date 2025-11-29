@@ -180,16 +180,18 @@ analyticsIndex.get("/overview", authMiddleware, async (c: Context) => {
         : [];
 
     const topLinks = blocks
+      .filter((block) => block.type === "link")
       .map((block) => {
         const clicks = clicksByBlock[block.id] || 0;
         const clickRate =
           totalViews > 0
             ? parseFloat(((clicks / totalViews) * 100).toFixed(1))
             : 0;
+        const config = block.config as { url?: string; title?: string };
         return {
           id: block.id,
-          title: block.label || block.title || "Untitled",
-          url: block.url || "",
+          title: config.title || "Untitled",
+          url: config.url || "",
           clicks,
           clickRate,
         };
@@ -388,8 +390,6 @@ analyticsIndex.post("/events/click", async (c: Context) => {
     }
 
     const userAgent = c.req.header("user-agent") || "";
-    const referrer =
-      c.req.header("referer") || c.req.header("referrer") || null;
 
     const headers: Record<string, string | undefined> = {};
     c.req.raw.headers.forEach((value, key) => {
@@ -399,8 +399,6 @@ analyticsIndex.post("/events/click", async (c: Context) => {
     const clientIp = getClientIp(headers);
 
     const deviceType = getDeviceType(userAgent);
-    const utmParams = url ? extractUtmParams(url) : {};
-    const trafficSource = getTrafficSource(referrer, utmParams.utmSource);
     const ipHash = hashIpAddress(clientIp);
     const geolocation = getGeolocation(clientIp);
     const userAgentParsed = parseUserAgent(userAgent);
@@ -411,13 +409,13 @@ analyticsIndex.post("/events/click", async (c: Context) => {
         profileId,
         blockId,
         eventType: "click",
-        utmSource: utmParams.utmSource,
-        utmMedium: utmParams.utmMedium,
-        utmCampaign: utmParams.utmCampaign,
-        utmContent: utmParams.utmContent,
-        utmTerm: utmParams.utmTerm,
-        referrer: referrer || null,
-        trafficSource: trafficSource,
+        utmSource: null,
+        utmMedium: null,
+        utmCampaign: null,
+        utmContent: null,
+        utmTerm: null,
+        referrer: null,
+        trafficSource: null,
         userAgent,
         userAgentParsed,
         deviceType,
