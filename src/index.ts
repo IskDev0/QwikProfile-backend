@@ -8,7 +8,7 @@ import utmIndex from "./routes/utm";
 import themesIndex from "./routes/themes";
 import db from "./db";
 import { utmLinks } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { CacheService, CacheKeys, CacheTTL } from "./utils/cache";
 import { globalRateLimiter } from "./middleware/rateLimiter";
 
@@ -40,25 +40,22 @@ app.get("/u/:shortCode", async (c) => {
 
     const cachedLink = await CacheService.get<{
       fullUrl: string;
-      id: number;
+      id: string;
       clicks: number;
     }>(cacheKey);
 
     if (cachedLink) {
       db.update(utmLinks)
-        .set({ clicks: cachedLink.clicks + 1 })
+        .set({ clicks: sql`${utmLinks.clicks} + 1` })
         .where(eq(utmLinks.id, cachedLink.id))
-        .then(() => {
-          CacheService.set(
-            cacheKey,
-            { ...cachedLink, clicks: cachedLink.clicks + 1 },
-            CacheTTL.SHORT_LINK,
-          );
+        .then(async () => {
+          await CacheService.delete(cacheKey);
         })
         .catch((err) => console.error("Error updating clicks:", err));
 
       return c.redirect(cachedLink.fullUrl, 302);
     }
+
     const [link] = await db
       .select()
       .from(utmLinks)
@@ -75,7 +72,7 @@ app.get("/u/:shortCode", async (c) => {
     );
 
     db.update(utmLinks)
-      .set({ clicks: link.clicks + 1 })
+      .set({ clicks: sql`${utmLinks.clicks} + 1` })
       .where(eq(utmLinks.id, link.id))
       .catch((err) => console.error("Error updating clicks:", err));
 
