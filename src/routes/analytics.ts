@@ -14,6 +14,7 @@ import {
 } from "../utils/analytics";
 import authMiddleware from "../middleware/authMiddleware";
 import getUserInfo from "../utils/auth/getUserInfo";
+import { analyticsRateLimiter } from "../middleware/rateLimiter";
 
 const analyticsIndex = new Hono();
 
@@ -294,7 +295,10 @@ analyticsIndex.get("/overview", authMiddleware, async (c: Context) => {
   }
 });
 
-analyticsIndex.post("/events/view", async (c: Context) => {
+analyticsIndex.post(
+  "/events/view",
+  analyticsRateLimiter,
+  async (c: Context) => {
   try {
     const body = await c.req.json();
     const { profileId, url } = body;
@@ -358,7 +362,10 @@ analyticsIndex.post("/events/view", async (c: Context) => {
   }
 });
 
-analyticsIndex.post("/events/click", async (c: Context) => {
+analyticsIndex.post(
+  "/events/click",
+  analyticsRateLimiter,
+  async (c: Context) => {
   try {
     const body = await c.req.json();
     const { profileId, blockId, url } = body;

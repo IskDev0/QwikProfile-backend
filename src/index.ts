@@ -10,9 +10,11 @@ import db from "./db";
 import { utmLinks } from "./db/schema";
 import { eq } from "drizzle-orm";
 import { CacheService, CacheKeys, CacheTTL } from "./utils/cache";
+import { globalRateLimiter } from "./middleware/rateLimiter";
 
 const app = new Hono();
 app.use(logger());
+app.use(globalRateLimiter);
 
 app.use(
   "*",

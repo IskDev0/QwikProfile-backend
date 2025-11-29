@@ -17,11 +17,16 @@ import verifyToken from "../utils/auth/verifyToken";
 import authMiddleware from "../middleware/authMiddleware";
 import getUserInfo from "../utils/auth/getUserInfo";
 import sendResetEmail from "../utils/auth/sendResetEmail";
+import {
+  authRateLimiter,
+  forgotPasswordRateLimiter,
+} from "../middleware/rateLimiter";
 
 const authIndex = new Hono();
 
 authIndex.post(
   "/register",
+  authRateLimiter,
   validationHook(registerSchema),
   async (c: Context) => {
     const body = await c.req.json();
@@ -69,7 +74,11 @@ authIndex.post(
   },
 );
 
-authIndex.post("/login", validationHook(loginSchema), async (c: Context) => {
+authIndex.post(
+  "/login",
+  authRateLimiter,
+  validationHook(loginSchema),
+  async (c: Context) => {
   const body = await c.req.json();
 
   try {
@@ -234,6 +243,7 @@ authIndex.get("/me", authMiddleware, async (c: Context) => {
 
 authIndex.post(
   "/forgot-password",
+  forgotPasswordRateLimiter,
   validationHook(forgotPasswordSchema),
   async (c: Context) => {
     const body = await c.req.json();
