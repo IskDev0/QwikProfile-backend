@@ -1,0 +1,56 @@
+name: Deploy to Digital Ocean
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            cd /opt/devlinks-backend
+            git pull origin main
+            docker-compose down
+            docker-compose build --no-cache
+            docker image prune -f
+            docker-compose up -d
+            echo "Waiting for services to start..."
+            sleep 10
+            docker-compose ps
+
+      - name: Check deployment status
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            cd /opt/devlinks-backend
+            if docker-compose ps | grep -q "Up"; then
+              echo "✅ Deployment successful!"
+              docker-compose logs --tail=20 app
+            else
+              echo "❌ Deployment failed!"
+              docker-compose logs --tail=50
+              exit 1
+            fi
+
+      - name: Send notification on failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Check the logs above."

@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+bun.lockb
+
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*.sublime-*
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+
+# Documentation
+README.md
+*.md
+!package.json
+
+# CI/CD
+.github
+
+# Build artifacts
+dist
+build
