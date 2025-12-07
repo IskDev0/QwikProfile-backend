@@ -26,13 +26,25 @@ app.use(
   }),
 );
 
+app.get("/", (c) => {
+  return c.json({
+    message: "DevLinks Backend API",
+    version: "1.0.0",
+    status: "running",
+  });
+});
+
+app.get("/health", (c) => {
+  return c.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.route("/auth", authIndex);
 app.route("/profiles", profilesIndex);
 app.route("/analytics", analyticsIndex);
 app.route("/utm", utmIndex);
 app.route("/themes", themesIndex);
 
-app.get("/u/:shortCode", async (c) => {
+app.get("/r/:shortCode", async (c) => {
   const shortCode = c.req.param("shortCode");
 
   try {
