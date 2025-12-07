@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "migrate": "npx drizzle-kit push",
-    "studio": "bunx drizzle-kit studio"
+    "studio": "bunx drizzle-kit studio",
+    "seed": "bun run src/db/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",
