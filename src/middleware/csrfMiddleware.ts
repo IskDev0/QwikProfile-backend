@@ -2,6 +2,10 @@ import { Context, Next } from "hono";
 import { getCookie } from "hono/cookie";
 
 export const csrfProtection = async (c: Context, next: Next) => {
+  if (process.env.NODE_ENV === "development") {
+    return await next();
+  }
+
   const method = c.req.method;
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
     return await next();
@@ -18,6 +22,11 @@ export const csrfProtection = async (c: Context, next: Next) => {
 };
 
 export const originValidation = async (c: Context, next: Next) => {
+  // Skip origin validation in development mode
+  if (process.env.NODE_ENV === "development") {
+    return await next();
+  }
+
   const method = c.req.method;
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
     return await next();
